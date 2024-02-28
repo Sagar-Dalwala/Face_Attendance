@@ -1,3 +1,4 @@
+from test import test
 import face_recognition
 import tkinter as tk
 import cv2
@@ -6,6 +7,7 @@ import util
 import os
 import subprocess
 import datetime
+
 
 class App:
     def __init__(self):
@@ -20,7 +22,10 @@ class App:
         self.most_recent_capture_arr = None
 
         self.login_button_main_window = util.get_button(self.main_window, 'login', 'green', self.login)
-        self.login_button_main_window.place(x=750, y=300)
+        self.login_button_main_window.place(x=750, y=200)
+
+        self.logout_button_main_window = util.get_button(self.main_window, 'logout', 'red', self.logout)
+        self.logout_button_main_window.place(x=750, y=300)
 
         self.register_new_user_button_main_window = util.get_button(self.main_window, 'register new user', 'gray',
                                                                     self.register_new_user, fg='black')
@@ -56,24 +61,43 @@ class App:
         self._label.after(20, self.process_webcam)
 
     def login(self):
-        unknown_img_path = './.tmp.jpg'
 
-        cv2.imwrite(unknown_img_path , self.most_recent_capture_arr)
+        label = test(
+            image = self.most_recent_capture_arr ,
+            model_dir = r"C:\Users\admin\Desktop\FaceApp\FaceAntiSpoofing\resources\anti_spoof_models",
+            device_id = 0
+        )
+        if label == 1 : 
 
-        output = str(subprocess.check_output(['face_recognition', self.db_dir, unknown_img_path], stderr=subprocess.STDOUT))
+            unknown_img_path = './.tmp.jpg'
+
+            cv2.imwrite(unknown_img_path , self.most_recent_capture_arr)
+
+            output = str(subprocess.check_output(['face_recognition', self.db_dir, unknown_img_path], stderr=subprocess.STDOUT))
+            
+            name = output.split(',')[1][:-5]
+            print(name) # prints 'unknown_person' or 'no_persons_found' or the name of the person
+
+            if name in ['unknown_person', 'no_persons_found']:
+                util.msg_box("Error", "Unknown user. Please register first.")
+            else:
+                util.msg_box("Successfully login", 'Welcome, {}.'.format(name))
+                with open(self.log_path , 'a') as f : 
+                    f.write('{} , {}\n'.format(name, datetime.datetime.now()))
+                    f.close()
+
+            os.remove(unknown_img_path)
+        else : 
+            util.msg_box("Fake Face Detected", "Fake face detected. Please try again.")
+
+    def logout(self):
+        # Display logout message
+        util.msg_box("Logout", "You have been logged out successfully.")
+
+        self.main_window.destroy()
+
+
         
-        name = output.split(',')[1][:-5]
-        print(name) # prints 'unknown_person' or 'no_persons_found' or the name of the person
-
-        if name in ['unknown_person', 'no_persons_found']:
-            util.msg_box("Error", "Unknown user. Please register first.")
-        else:
-            util.msg_box("Successfully login", 'Welcome, {}.'.format(name))
-            with open(self.log_path , 'a') as f : 
-                f.write('{} , {}\n'.format(name, datetime.datetime.now()))
-                f.close()
-
-        os.remove(unknown_img_path)
 
     def register_new_user(self):
         self.register_new_user_window = tk.Toplevel(self.main_window)
